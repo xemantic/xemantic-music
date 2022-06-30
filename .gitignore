@@ -5,6 +5,7 @@
 /.idea/*
 !/.idea/google-java-format.xml
 !/.idea/codeStyles
+!/.idea/copyright
 
 # kotlin-js
 /kotlin-js-store
