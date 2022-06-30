@@ -31,7 +31,7 @@ interface Looper {
   /**
    * The list of loops being currently played, sorted by the start time.
    */
-  val playedLoops: List<Loop>
+  val playingLoops: List<Loop>
 
   /**
    * Indicates if something is being currently recorded.
@@ -74,7 +74,7 @@ interface Looper {
 
   /**
    * Stops the loop of given id.
-   * Note: it will cause the loop to be removed from [playedLoops].
+   * Note: it will cause the loop to be removed from [playingLoops].
    *
    * @param loopId the loop id.
    */
