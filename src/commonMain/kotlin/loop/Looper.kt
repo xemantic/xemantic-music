@@ -77,6 +77,7 @@ interface Looper {
    * Note: it will cause the loop to be removed from [playingLoops].
    *
    * @param loopId the loop id.
+   * @throws IllegalArgumentException if the loop does not exists.
    */
   fun stopLoop(loopId: Int)
 
@@ -84,6 +85,7 @@ interface Looper {
    * Removes recording of given `name`.
    *
    * @param name the name of the recording to remove.
+   * @throws IllegalArgumentException if the recording of given name does not exists.
    */
   fun removeRecording(name: String)
 

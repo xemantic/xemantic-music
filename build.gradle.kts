@@ -9,6 +9,8 @@ repositories {
   mavenCentral()
 }
 
+val log4jVersion = "2.17.2"
+
 kotlin {
   jvm {
     compilations.all {
@@ -42,8 +44,17 @@ kotlin {
         implementation(kotlin("test"))
       }
     }
-    val jvmMain by getting
-    val jvmTest by getting
+    val jvmMain by getting {
+      dependencies {
+        implementation("org.apache.logging.log4j:log4j-api:$log4jVersion")
+      }
+    }
+    val jvmTest by getting {
+      dependencies {
+        implementation("org.apache.logging.log4j:log4j-core:$log4jVersion")
+        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.3")
+      }
+    }
     val jsMain by getting
     val jsTest by getting
     val nativeMain by getting
