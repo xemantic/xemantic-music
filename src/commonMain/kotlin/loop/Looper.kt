@@ -41,12 +41,15 @@ interface Looper {
   /**
    * Starts recording under a given `name`.
    * The [Recording] will be created only if [stopRecording] is being called afterwards.
+   * Note: if any loop is being played, the recording will stop immediately at the end
+   * of the first played loop.
    *
    * @param name the name of the recording.
+   * @param onStopRecording an optional parameter to describe what happens when recording is finished.
    * @throws IllegalArgumentException if the recording of given name already exists.
    * @throws IllegalStateException if the looper is currently recording.
    */
-  fun startRecording(name: String)
+  fun startRecording(name: String, onStopRecording: (Recording) -> Unit = {}) // TODO it should automatically
 
   /**
    * Stops the recording initiated with [startRecording].

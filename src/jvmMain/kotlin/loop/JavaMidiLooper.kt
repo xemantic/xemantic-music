@@ -38,16 +38,13 @@ class JavaMidiLooper(
   private val recordingSequencer = MidiSystem.getSequencer(false)
 
   init {
-    if (!input.isOpen) {
-      input.open()
-    }
     if (!output.isOpen) {
       output.open()
     }
     recordingSequencer.open()
   }
 
-  private val recordingMap = ConcurrentHashMap<String, Pair<Recording, Sequence>>()
+  private val midiRecordingMap = ConcurrentHashMap<String, MidiRecording>()
 
   private val recordingState = AtomicBoolean(false)
 
@@ -57,19 +54,19 @@ class JavaMidiLooper(
 
   private val loopCounter = AtomicInteger(0)
 
-  override val recordings: List<Recording> get() = recordingMap.values.map { it.first }
+  override val recordings: List<Recording> get() = midiRecordingMap.values.map { it.recording }
 
   override val playingLoops: List<Loop> get() = loopMap.values.map { it.loop }
 
   override val recording: Boolean get() = recordingState.get()
 
-  override fun startRecording(name: String) {
+  override fun startRecording(name: String, onStopRecording: (Recording) -> Unit) {
 
     if (recordingState.getAndSet(true)) {
       throw IllegalStateException("Cannot start new recording if already recording")
     }
 
-    if (recordingMap.containsKey(name)) {
+    if (midiRecordingMap.containsKey(name)) {
       throw IllegalArgumentException("Recording already exists: $name")
     }
 
@@ -77,12 +74,14 @@ class JavaMidiLooper(
 
     input.transmitter.receiver = recordingSequencer.receiver
     with (recordingSequencer) {
+      //tickPosition = 0
       sequence = Sequence(Sequence.PPQ, 24) // TODO where to set up the resolution?
       val track = sequence.createTrack()
       recordEnable(track, -1)
-      tickPosition = recordingSequencer.tickPosition
-      startRecording()
+      //microsecondPosition = input.microsecondPosition
     }
+    input.open()
+    recordingSequencer.startRecording()
 
     startedRecordingRef.set(
       StartedRecording(
@@ -90,7 +89,7 @@ class JavaMidiLooper(
         start = System.currentTimeMillis()
       )
     )
-
+    logger.info("First tick: ${recordingSequencer.tickPosition}")
   }
 
   override fun stopRecording(): Recording {
@@ -103,18 +102,23 @@ class JavaMidiLooper(
 
     logger.info("stopRecording: ${startedRecording.name}")
 
-    input.transmitter.receiver = null // TODO is that correct, or rather close?
+    //input.transmitter.receiver = null // TODO is that correct, or rather close?
     //Thread.sleep(100)
     //inputSequencer.receiver.close()
     recordingSequencer.stopRecording()
+    input.close()
     //inputSequencer.stop()
     val recording = Recording(
       name = startedRecording.name,
       start = startedRecording.start,
       stop = System.currentTimeMillis()
     )
-    recordingMap[startedRecording.name] = Pair(recording, recordingSequencer.sequence)
+    midiRecordingMap[startedRecording.name] = MidiRecording(
+      recording = recording,
+      sequence = recordingSequencer.sequence
+    )
     recordingState.set(false)
+    recordingSequencer.sequence = null
     return recording
   }
 
@@ -124,7 +128,7 @@ class JavaMidiLooper(
     onLoopStopped: (Int) -> Unit
   ): Int {
 
-    val recordingPair = recordingMap[name]
+    val midiRecording = midiRecordingMap[name]
       ?: throw IllegalArgumentException("Cannot play loop which does not exist: $name")
 
     val loopId = loopCounter.incrementAndGet()
@@ -135,7 +139,7 @@ class JavaMidiLooper(
     val sequencer = MidiSystem.getSequencer(false).apply {
       open()
       transmitter.receiver = output.receiver
-      sequence = recordingPair.second
+      sequence = midiRecording.sequence
       loopCount = repetitionCount
       addMetaEventListener {
         logger.info("metaEvent: $it, type: ${it.type}")
@@ -151,7 +155,7 @@ class JavaMidiLooper(
       loop = Loop(
         id = loopId,
         start = System.currentTimeMillis(),
-        recording = recordingPair.first
+        recording = midiRecording.recording
       ),
       sequencer = sequencer
     )
@@ -168,7 +172,7 @@ class JavaMidiLooper(
 
   override fun removeRecording(name: String) {
     logger.info("Removing recording: $name")
-    if (recordingMap.remove(name) == null) {
+    if (midiRecordingMap.remove(name) == null) {
       throw IllegalArgumentException("Cannot remove non-existent recording: $name")
     }
   }
@@ -189,4 +193,9 @@ internal data class StartedRecording(
 internal data class PlayingLoop(
   val loop: Loop,
   val sequencer: Sequencer
+)
+
+internal data class MidiRecording(
+  val recording: Recording,
+  val sequence: Sequence
 )
