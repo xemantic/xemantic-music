@@ -1,64 +1,76 @@
 plugins {
-  kotlin("multiplatform") version "1.7.0"
+  alias(libs.plugins.kotlin.multiplatform)
+  alias(libs.plugins.dokka)
+  alias(libs.plugins.gradle.versions.plugin)
+  `maven-publish`
 }
-
-group = "com.xemantic.music"
-version = "1.0-SNAPSHOT"
 
 repositories {
   mavenCentral()
 }
 
-val log4jVersion = "2.17.2"
-
 kotlin {
+
+  jvmToolchain(libs.versions.jvmTarget.get().toInt())
+
   jvm {
-    compilations.all {
-      kotlinOptions.jvmTarget = "15"
-    }
-    withJava()
-    testRuns["test"].executionTask.configure {
-      useJUnitPlatform()
-    }
-  }
-  js(IR) {
-    browser {
-      commonWebpackConfig {
-        cssSupport.enabled = true
+    compilations {
+      all {
+        kotlinOptions {
+          jvmTarget = libs.versions.jvmTarget.get()
+        }
       }
     }
   }
+
+  js {
+    browser {}
+  }
+
   val hostOs = System.getProperty("os.name")
   val isMingwX64 = hostOs.startsWith("Windows")
+  @Suppress("UNUSED_VARIABLE")
   val nativeTarget = when {
-    hostOs == "Mac OS X" -> macosX64("native")
-    hostOs == "Linux" -> linuxX64("native")
-    isMingwX64 -> mingwX64("native")
+    hostOs == "Mac OS X" -> macosX64()
+    hostOs == "Linux" -> linuxX64()
+    isMingwX64 -> mingwX64()
     else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
   }
 
   sourceSets {
-    val commonMain by getting
-    val commonTest by getting {
-      dependencies {
-        implementation(kotlin("test"))
+
+    all {
+      languageSettings {
+        languageVersion = libs.versions.kotlinLanguageVersion.get()
+        apiVersion = libs.versions.kotlinLanguageVersion.get()
       }
     }
-    val jvmMain by getting {
+
+    commonMain {
       dependencies {
-        implementation("org.apache.logging.log4j:log4j-api:$log4jVersion")
+        api(libs.kotlin.coroutines)
+        api(libs.kotlin.datetime)
+        implementation(libs.kotlin.logging)
       }
     }
-    val jvmTest by getting {
+
+    commonTest {
       dependencies {
-        implementation("org.apache.logging.log4j:log4j-core:$log4jVersion")
-        implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.13.3")
+        implementation(libs.kotlin.test)
+        implementation(libs.kotlin.coroutines.test)
+        implementation(libs.kotest.assertions.core)
       }
     }
-    val jsMain by getting
-    val jsTest by getting
-    val nativeMain by getting
-    val nativeTest by getting
+
+    jvmTest {
+      dependencies {
+        runtimeOnly(libs.log4j.slf4j2)
+        runtimeOnly(libs.log4j.core)
+        runtimeOnly(libs.jackson.databind)
+        runtimeOnly(libs.jackson.json)
+      }
+    }
+
   }
 
 }
