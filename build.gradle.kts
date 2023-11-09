@@ -23,7 +23,7 @@ kotlin {
     }
   }
 
-  js {
+  js(IR) {
     browser {}
   }
 
@@ -73,4 +73,23 @@ kotlin {
 
   }
 
+}
+
+tasks {
+
+  dependencyUpdates {
+    gradleReleaseChannel = "current"
+    rejectVersionIf {
+      isNonStable(candidate.version) && !isNonStable(currentVersion)
+    }
+  }
+
+}
+
+private val nonStableKeywords = listOf("alpha", "beta", "rc")
+
+fun isNonStable(
+  version: String
+): Boolean = nonStableKeywords.any {
+  version.lowercase().contains(it)
 }
